@@ -33,7 +33,7 @@ typedef enum {NOT_WHITESPACE, WHITESPACE, TOKEN_AVAILABLE, LINE_DONE, FILE_DONE,
 typedef enum {NOSEG, DATASEG, TEXTSEG} segtype;
 
 int		tokennum;
-int		inline, outline;
+int		in_line, out_line;
 
 char	*token;
 char	tokens[MAX_TOKENS][MAX_TOKEN_LENGTH+1];
@@ -47,9 +47,50 @@ typedef struct {
 	void	(*parsefunc) (void);
 } parsefield;
 
+FILE *src_file = NULL;
 
 void errorexit (void);
 
+//==============================================
+
+void str_to_lower(const char *src, char *dst)
+{
+	while (1)
+	{
+		char c = *src++;
+		if (!c) break;
+		if (c >= 'A' && c <= 'Z') c += ('a' - 'A');
+		*dst++ = c;
+	}
+}
+
+int strcmpi(const char *s1, const char *s2)
+{
+	int len_s1 = strlen(s1);
+	int len_s2 = strlen(s2);
+
+	char *buf_s1_lower = alloca(sizeof(char) * len_s1);
+	char *buf_s2_lower = alloca(sizeof(char) * len_s2);
+
+	str_to_lower(s1, buf_s1_lower);
+	str_to_lower(s2, buf_s2_lower);
+
+	return strcmp(buf_s1_lower, buf_s2_lower);
+}
+
+int strnicmp(const char *s1, const char *s2, size_t n)
+{
+	int len_s1 = strlen(s1);
+	int len_s2 = strlen(s2);
+
+	char *buf_s1_lower = alloca(sizeof(char) * len_s1);
+	char *buf_s2_lower = alloca(sizeof(char) * len_s2);
+
+	str_to_lower(s1, buf_s1_lower);
+	str_to_lower(s2, buf_s2_lower);
+
+	return strncmp(buf_s1_lower, buf_s2_lower, n);
+}
 
 //==============================================
 
@@ -758,7 +799,7 @@ int	numparse = sizeof (parsedata) / sizeof (parsedata[0]);
 
 void errorexit (void)
 {
-	fprintf (stderr, "In line: %d, out line: %d\n", inline, outline);
+	fprintf (stderr, "In line: %d, out line: %d\n", in_line, out_line);
 	exit (1);
 }
 
@@ -787,7 +828,8 @@ int gettoken (void)
 
 	do
 	{
-		if ((c = getchar ()) == EOF)
+		// if ((c = getchar ()) == EOF)
+		if ((c = fgetc(src_file)) == EOF)
 			return FILE_DONE;
 
 		if ((stat = whitespace (c)) == LINE_DONE)
@@ -810,7 +852,8 @@ int gettoken (void)
 	{
 		do
 		{
-			if ((c = getchar ()) == EOF)
+			// if ((c = getchar ()) == EOF)
+			if ((c = fgetc(src_file)) == EOF)
 			{
 				fprintf (stderr, "EOF in middle of parentheses\n");
 				errorexit ();
@@ -823,7 +866,8 @@ int gettoken (void)
 	
 	for ( ;; )
 	{
-		if ((c = getchar ()) == EOF)
+		// if ((c = getchar ()) == EOF)
+		if ((c = fgetc(src_file)) == EOF)
 		{
 			token[count] = 0;
 			return TOKEN_AVAILABLE;
@@ -869,7 +913,8 @@ int gettoken (void)
 
 			do
 			{
-				if ((c = getchar ()) == EOF)
+				// if ((c = getchar ()) == EOF)
+				if ((c = fgetc(src_file)) == EOF)
 				{
 					fprintf (stderr, "EOF in middle of parentheses\n");
 					errorexit ();
@@ -968,7 +1013,7 @@ tokenstat parseline (void)
 				else
 					printf ("\n");
 
-				outline++;
+				out_line++;
 			}
 			return PARSED_OKAY;
 
@@ -1019,19 +1064,32 @@ tokenstat parseline (void)
 }
 
 
-void main (int argc, char **argv)
+int main (int argc, char **argv)
 {
 	tokenstat	stat;
 
 	printf (" .386P\n"
             " .model FLAT\n");
-	inline = 1;
-	outline = 3;
+	in_line = 1;
+	out_line = 3;
+
+	if (argc != 2)
+	{
+		printf("gas2masm [FILE]\n");
+		return 0;
+	}
+
+	src_file = fopen(argv[1], "r");
+	if (!src_file)
+	{
+		printf("Failed to open file '%s'.\n", argv[1]);
+		return 0;
+	}
 
 	for ( ;; )
 	{
 		stat = parseline ();
-		inline++;
+		in_line++;
 
 		switch (stat)
 		{
@@ -1052,5 +1110,7 @@ void main (int argc, char **argv)
 			exit (0);
 		}
 	}
+
+	return 0;
 }
 

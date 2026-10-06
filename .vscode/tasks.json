@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "debug gas2masm",
+            "type": "shell",
+            "command": "${workspaceFolder}/WinQuake/gas2masm/compile.sh",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ]
+}

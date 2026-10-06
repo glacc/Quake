@@ -1,0 +1,18 @@
+Completion:
+  HeaderInsertion: Never
+
+---
+
+If:
+  PathMatch: [".*\\.c"]
+CompileFlags:
+  Add:
+    - -std=gnu90
+
+---
+
+If:
+  PathMatch: [".*\\.cpp", ".*\\.hpp", ".*\\.h"]
+CompileFlags:
+  Add:
+    - -std=c++23

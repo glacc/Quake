@@ -1,0 +1,29 @@
+{
+    "configurations": [
+    {
+        "name": "gas2masm",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/WinQuake/gas2masm/gas2masm",
+        "args": ["../d_copy.s"],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}/WinQuake/gas2masm/",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "preLaunchTask": "debug gas2masm",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    }
+    ]
+}
