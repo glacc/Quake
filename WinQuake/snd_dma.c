@@ -166,9 +166,6 @@ S_Init
 */
 void S_Init (void)
 {
-	if (!shm)
-		return;
-
 	Con_Printf("\nSound Initialization\n");
 
 	if (COM_CheckParm("-nosound"))
@@ -201,11 +198,15 @@ void S_Init (void)
 		Con_Printf ("loading all sounds as 8bit\n");
 	}
 
-
-
 	snd_initialized = true;
 
 	S_Startup ();
+
+	if (!(sound_started || fakedma))
+	{
+		Con_Printf("Can't start sound hardware.\n");
+		return;
+	}
 
 	SND_InitScaletable ();
 

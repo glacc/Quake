@@ -198,10 +198,8 @@ void V_DriftPitch (void)
 		else
 			cl.driftmove += host_frametime;
 	
-		if ( cl.driftmove > v_centermove.value)
-		{
+		if ( cl.driftmove > v_centermove.value && !cl.is_last_input_mouse)
 			V_StartPitchDrift ();
-		}
 		return;
 	}
 	

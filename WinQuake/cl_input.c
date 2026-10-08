@@ -117,11 +117,7 @@ void KeyUp (kbutton_t *b)
 void IN_KLookDown (void) {KeyDown(&in_klook);}
 void IN_KLookUp (void) {KeyUp(&in_klook);}
 void IN_MLookDown (void) {KeyDown(&in_mlook);}
-void IN_MLookUp (void) {
-KeyUp(&in_mlook);
-if ( !(in_mlook.state&1) &&  lookspring.value)
-	V_StartPitchDrift();
-}
+void IN_MLookUp (void) {KeyUp(&in_mlook);}
 void IN_UpDown(void) {KeyDown(&in_up);}
 void IN_UpUp(void) {KeyUp(&in_up);}
 void IN_DownDown(void) {KeyDown(&in_down);}
@@ -179,25 +175,33 @@ float CL_KeyState (kbutton_t *key)
 	val = 0;
 	
 	if (impulsedown && !impulseup)
+	{
 		if (down)
 			val = 0.5;	// pressed and held this frame
 		else
 			val = 0;	//	I_Error ();
+	}
 	if (impulseup && !impulsedown)
+	{
 		if (down)
 			val = 0;	//	I_Error ();
 		else
 			val = 0;	// released this frame
+	}
 	if (!impulsedown && !impulseup)
+	{
 		if (down)
 			val = 1.0;	// held the entire frame
 		else
 			val = 0;	// up the entire frame
+	}
 	if (impulsedown && impulseup)
+	{
 		if (down)
 			val = 0.75;	// released and re-pressed this frame
 		else
 			val = 0.25;	// pressed and released this frame
+	}
 
 	key->state &= 1;		// clear impulses
 	
@@ -232,25 +236,19 @@ Moves the local angle positions
 void CL_AdjustAngles (void)
 {
 	float	speed;
-	float	up, down;
+	float	up, down, left, right;
 	
 	if (in_speed.state & 1)
 		speed = host_frametime * cl_anglespeedkey.value;
 	else
 		speed = host_frametime;
 
-	if (!(in_strafe.state & 1))
-	{
-		cl.viewangles[YAW] -= speed*cl_yawspeed.value*CL_KeyState (&in_right);
-		cl.viewangles[YAW] += speed*cl_yawspeed.value*CL_KeyState (&in_left);
-		cl.viewangles[YAW] = anglemod(cl.viewangles[YAW]);
-	}
-	if (in_klook.state & 1)
-	{
-		V_StopPitchDrift ();
-		cl.viewangles[PITCH] -= speed*cl_pitchspeed.value * CL_KeyState (&in_forward);
-		cl.viewangles[PITCH] += speed*cl_pitchspeed.value * CL_KeyState (&in_back);
-	}
+	left = CL_KeyState (&in_left);
+	right = CL_KeyState (&in_right);
+
+	cl.viewangles[YAW] -= speed*cl_yawspeed.value * right;
+	cl.viewangles[YAW] += speed*cl_yawspeed.value * left;
+	cl.viewangles[YAW] = anglemod(cl.viewangles[YAW]);
 	
 	up = CL_KeyState (&in_lookup);
 	down = CL_KeyState(&in_lookdown);
@@ -258,8 +256,11 @@ void CL_AdjustAngles (void)
 	cl.viewangles[PITCH] -= speed*cl_pitchspeed.value * up;
 	cl.viewangles[PITCH] += speed*cl_pitchspeed.value * down;
 
-	if (up || down)
+	if (up || down || left || right)
+	{
 		V_StopPitchDrift ();
+		cl.is_last_input_mouse = false;
+	}
 		
 	if (cl.viewangles[PITCH] > 80)
 		cl.viewangles[PITCH] = 80;
@@ -288,12 +289,6 @@ void CL_BaseMove (usercmd_t *cmd)
 	CL_AdjustAngles ();
 	
 	Q_memset (cmd, 0, sizeof(*cmd));
-	
-	if (in_strafe.state & 1)
-	{
-		cmd->sidemove += cl_sidespeed.value * CL_KeyState (&in_right);
-		cmd->sidemove -= cl_sidespeed.value * CL_KeyState (&in_left);
-	}
 
 	cmd->sidemove += cl_sidespeed.value * CL_KeyState (&in_moveright);
 	cmd->sidemove -= cl_sidespeed.value * CL_KeyState (&in_moveleft);
@@ -301,11 +296,11 @@ void CL_BaseMove (usercmd_t *cmd)
 	cmd->upmove += cl_upspeed.value * CL_KeyState (&in_up);
 	cmd->upmove -= cl_upspeed.value * CL_KeyState (&in_down);
 
-	if (! (in_klook.state & 1) )
-	{	
-		cmd->forwardmove += cl_forwardspeed.value * CL_KeyState (&in_forward);
-		cmd->forwardmove -= cl_backspeed.value * CL_KeyState (&in_back);
-	}	
+	if (noclip_anglehack)
+		cmd->upmove += cl_upspeed.value * CL_KeyState(&in_jump);
+
+	cmd->forwardmove += cl_forwardspeed.value * CL_KeyState (&in_forward);
+	cmd->forwardmove -= cl_backspeed.value * CL_KeyState (&in_back);
 
 //
 // adjust for speed key

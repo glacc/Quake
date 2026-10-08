@@ -183,6 +183,8 @@ typedef struct
 	float		driftmove;
 	double		laststop;
 
+	qboolean	is_last_input_mouse;
+
 	float		viewheight;
 	float		crouch;			// local amount for smoothing stepups
 

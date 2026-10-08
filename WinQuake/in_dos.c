@@ -284,6 +284,12 @@ void IN_MouseMove (usercmd_t *cmd)
 	dos_int86(0x33);
 	mx = (short)regs.x.cx;
 	my = (short)regs.x.dx;
+
+	if (mx || my)
+	{
+		V_StopPitchDrift ();
+		cl.is_last_input_mouse = true;
+	}
 	
 	if (m_filter.value)
 	{
@@ -301,30 +307,13 @@ void IN_MouseMove (usercmd_t *cmd)
 	mouse_x *= sensitivity.value;
 	mouse_y *= sensitivity.value;
 
-// add mouse X/Y movement to cmd
-	if ( (in_strafe.state & 1) || (lookstrafe.value && (in_mlook.state & 1) ))
-		cmd->sidemove += m_side.value * mouse_x;
-	else
-		cl.viewangles[YAW] -= m_yaw.value * mouse_x;
-	
-	if (in_mlook.state & 1)
-		V_StopPitchDrift ();
-		
-	if ( (in_mlook.state & 1) && !(in_strafe.state & 1))
-	{
-		cl.viewangles[PITCH] += m_pitch.value * mouse_y;
-		if (cl.viewangles[PITCH] > 80)
-			cl.viewangles[PITCH] = 80;
-		if (cl.viewangles[PITCH] < -70)
-			cl.viewangles[PITCH] = -70;
-	}
-	else
-	{
-		if ((in_strafe.state & 1) && noclip_anglehack)
-			cmd->upmove -= m_forward.value * mouse_y;
-		else
-			cmd->forwardmove -= m_forward.value * mouse_y;
-	}
+	cl.viewangles[YAW] -= m_yaw.value * mouse_x;
+
+	cl.viewangles[PITCH] += m_pitch.value * mouse_y;
+	if (cl.viewangles[PITCH] > 80)
+		cl.viewangles[PITCH] = 80;
+	if (cl.viewangles[PITCH] < -70)
+		cl.viewangles[PITCH] = -70;
 }
 
 /*
