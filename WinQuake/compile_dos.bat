@@ -69,6 +69,7 @@ gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c sys_dos.c
 gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c vid_dos.c
 gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c vid_ext.c
 gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c vid_vga.c
+gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c vid_wide.c
 gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c view.c
 gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c vregset.c
 gcc -std=gnu90 -trigraphs -fcommon -fexpensive-optimizations -O3 -c wad.c

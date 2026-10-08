@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "r_local.h"
 
+#include "vid_wide.h"
+
 //define	PASSAGES
 
 void		*colormap;
@@ -361,6 +363,8 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 	float	res_scale;
 
 	r_viewchanged = true;
+
+	aspect *= aspect_ratio_list[Wide_GetAspectRatio()].ratio / (4.0 / 3.0);
 
 	R_SetVrect (pvrect, &r_refdef.vrect, lineadj);
 

@@ -22,6 +22,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "r_local.h"
 
+#include "vid_wide.h"
+
+#define FOV_HORZ 1
+
+#if FOV_HORZ
+#define FOV_DEFAULT "60"
+#else
+#define FOV_DEFAULT "90"
+#endif
+
 // only the refresh window will be updated unless these variables are flagged 
 int			scr_copytop;
 int			scr_copyeverything;
@@ -31,7 +41,7 @@ float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
 cvar_t		scr_viewsize = {"viewsize","100", true};
-cvar_t		scr_fov = {"fov","90"};	// 10 - 170
+cvar_t		scr_fov = {"fov",FOV_DEFAULT};	// 10 - 170
 cvar_t		scr_conspeed = {"scr_conspeed","300"};
 cvar_t		scr_centertime = {"scr_centertime","2"};
 cvar_t		scr_showram = {"showram","1"};
@@ -192,6 +202,24 @@ void SCR_CheckDrawCenterString (void)
 CalcFov
 ====================
 */
+#if FOV_HORZ
+float CalcFov (float fov_y, float width, float height)
+{
+    float   a;
+    float   y;
+
+    if (fov_y < 1 || fov_y > 179)
+    	Sys_Error ("Bad fov: %f", fov_y);
+
+    y = height/tan(fov_y/360*M_PI);
+
+    a = atan (width/y);
+
+    a = a*360/M_PI;
+
+    return a;
+}
+#else
 float CalcFov (float fov_x, float width, float height)
 {
         float   a;
@@ -208,6 +236,7 @@ float CalcFov (float fov_x, float width, float height)
 
         return a;
 }
+#endif
 
 /*
 =================
@@ -242,8 +271,13 @@ static void SCR_CalcRefdef (void)
 	if (scr_fov.value > 170)
 		Cvar_Set ("fov","170");
 
+#if FOV_HORZ
+	r_refdef.fov_y = scr_fov.value;
+	r_refdef.fov_x = CalcFov (r_refdef.fov_y, r_refdef.vrect.width * aspect_ratio_list[Wide_GetAspectRatio()].ratio, r_refdef.vrect.height);
+#else
 	r_refdef.fov_x = scr_fov.value;
 	r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
+#endif
 
 // intermission is always full screen	
 	if (cl.intermission)
@@ -274,6 +308,8 @@ static void SCR_CalcRefdef (void)
 
 // notify the refresh of the change
 	R_ViewChanged (&vrect, sb_lines, vid.aspect);
+
+	// Con_Printf("aspect_mul = %.2f\nvid.aspect = %.2f\n", aspect_mul, vid.aspect);
 }
 
 

@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "r_local.h"
 
+#include "vid_wide.h"
+
 /*
 
 A server can allways be started, even if the system started out as a client
@@ -656,6 +658,8 @@ void _Host_Frame (float time)
 // process console commands
 	Cbuf_Execute ();
 
+	Wide_CheckConfigValueLoaded();
+
 	NET_Poll();
 
 // if running the server locally, make intentions now
@@ -853,7 +857,8 @@ void Host_Init (quakeparms_t *parms)
 
 	Memory_Init (parms->membase, parms->memsize);
 	Cbuf_Init ();
-	Cmd_Init ();	
+	Cmd_Init ();
+	Wide_Init ();	// for wide screen support on DOS
 	V_Init ();
 	Chase_Init ();
 	Host_InitVCR (parms);
@@ -886,7 +891,7 @@ void Host_Init (quakeparms_t *parms)
 		IN_Init ();
 #endif
 		VID_Init (host_basepal);
-
+		
 		Draw_Init ();
 		SCR_Init ();
 		R_Init ();

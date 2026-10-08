@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "winquake.h"
 #endif
 
+#include "vid_wide.h"
+
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
@@ -1039,7 +1041,7 @@ again:
 #ifdef _WIN32
 #define	OPTIONS_ITEMS	14
 #else
-#define	OPTIONS_ITEMS	13
+#define	OPTIONS_ITEMS	14
 #endif
 
 #define	SLIDER_RANGE	10
@@ -1136,9 +1138,19 @@ void M_AdjustSliders (int dir)
 	case 11:	// lookstrafe
 		Cvar_SetValue ("lookstrafe", !lookstrafe.value);
 		break;
-
+	case 12:
+		{
+			int aspect_ratio_new = Wide_GetAspectRatio() + dir;
+			if (aspect_ratio_new < 0)
+				aspect_ratio_new = aspect_ratio_count - 1;
+			if (aspect_ratio_new >= aspect_ratio_count)
+				aspect_ratio_new = 0;
+			Wide_SetAspectRatio(aspect_ratio_new);
+		}
+		vid.recalc_refdef = 1;
+		break;
 #ifdef _WIN32
-	case 13:	// _windowed_mouse
+	case 14:	// _windowed_mouse
 		Cvar_SetValue ("_windowed_mouse", !_windowed_mouse.value);
 		break;
 #endif
@@ -1179,6 +1191,7 @@ void M_Options_Draw (void)
 {
 	float		r;
 	qpic_t	*p;
+	char *aspect_ratio_str;
 
 	M_DrawTransPic (16, 4, Draw_CachePic ("gfx/qplaque.lmp") );
 	p = Draw_CachePic ("gfx/p_option.lmp");
@@ -1220,8 +1233,11 @@ void M_Options_Draw (void)
 	M_Print (16, 120, "            Lookstrafe");
 	M_DrawCheckbox (220, 120, lookstrafe.value);
 
+	M_Print (16, 128, "          Aspect Ratio");
+	M_Print (220, 128, aspect_ratio_list[Wide_GetAspectRatio()].name);
+
 	if (vid_menudrawfn)
-		M_Print (16, 128, "         Video Options");
+		M_Print (16, 136, "         Video Options");
 
 #ifdef _WIN32
 	if (modestate == MS_WINDOWED)
@@ -1258,7 +1274,7 @@ void M_Options_Key (int k)
 		case 2:
 			Cbuf_AddText ("exec default.cfg\n");
 			break;
-		case 12:
+		case 13:
 			M_Menu_Video_f ();
 			break;
 		default:
@@ -1290,19 +1306,19 @@ void M_Options_Key (int k)
 		break;
 	}
 
-	if (options_cursor == 12 && vid_menudrawfn == NULL)
+	if (options_cursor == OPTIONS_ITEMS-1 && vid_menudrawfn == NULL)
 	{
 		if (k == K_UPARROW)
-			options_cursor = 11;
+			options_cursor = OPTIONS_ITEMS-2;
 		else
 			options_cursor = 0;
 	}
 
 #ifdef _WIN32
-	if ((options_cursor == 13) && (modestate != MS_WINDOWED))
+	if ((options_cursor == OPTIONS_ITEMS-1) && (modestate != MS_WINDOWED))
 	{
 		if (k == K_UPARROW)
-			options_cursor = 12;
+			options_cursor = OPTIONS_ITEMS-2;
 		else
 			options_cursor = 0;
 	}
