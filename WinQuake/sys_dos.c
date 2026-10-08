@@ -58,7 +58,8 @@ static double		curtime = 0.0;
 static double		lastcurtime = 0.0;
 static double		oldtime = 0.0;
 
-static qboolean		isDedicated;
+// static qboolean		isDedicated;
+qboolean		isDedicated;
 
 static int			minmem;
 
