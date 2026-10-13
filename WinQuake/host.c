@@ -249,23 +249,44 @@ Writes key bindings and archived cvars to config.cfg
 void Host_WriteConfiguration (void)
 {
 	FILE	*f;
+	char	*name;
+	char	*name_case_corrected = NULL;
 
 // dedicated servers initialize the host but don't parse and set the
 // config.cfg cvars
 	if (host_initialized & !isDedicated)
 	{
+	#ifdef _SDL
+		name = va("%s/config.cfg",com_gamedir);
+
+		if (!QSDL_FindCorrectPathCase(name, &name_case_corrected))
+			f = fopen (name, "w");
+		else
+			f = fopen (name_case_corrected, "w");
+		if (!f)
+		{
+			Con_Printf ("Couldn't write config.cfg.\n");
+			QSDL_FreeP((void *)&name_case_corrected);
+			return;
+		}
+	#else
 		f = fopen (va("%s/config.cfg",com_gamedir), "w");
 		if (!f)
 		{
 			Con_Printf ("Couldn't write config.cfg.\n");
 			return;
 		}
+	#endif
 		
 		Key_WriteBindings (f);
 		Cvar_WriteVariables (f);
 
 		fclose (f);
 	}
+
+#ifdef _SDL
+	QSDL_FreeP((void *)&name_case_corrected);
+#endif
 }
 
 

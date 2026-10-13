@@ -24,22 +24,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "sdl_global.h"
 
+#define BASEWIDTH   320
+#define BASEHEIGHT  200
+
 viddef_t vid;           // global video state
 
-cvar_t vid_config_x = {"vid_config_x","800",true};
-cvar_t vid_config_y = {"vid_config_y","600",true};
+cvar_t vid_config_x = {"vid_config_x","0",true};
+cvar_t vid_config_y = {"vid_config_y","0",true};
+cvar_t vid_config_scale = {"vid_config_scale","0",true};
 
 SDL_Window *vid_sdl_win = NULL;
 SDL_Surface *vid_sdl_surf = NULL;
 
-#define BASEWIDTH   320
-#define BASEHEIGHT  200
-
 char str_vid_size_x[16] = "";
 char str_vid_size_y[16] = "";
+int vid_scale_menu;
 
 int vid_size_x = BASEWIDTH;
 int vid_size_y = BASEHEIGHT;
+int vid_scale = 1;
 
 byte  *vid_buffer = NULL;
 short *zbuffer = NULL;
@@ -50,6 +53,10 @@ SDL_Palette *sdl_palette = NULL;
 
 unsigned short d_8to16table[256];
 unsigned d_8to24table[256];
+
+qboolean first_update = true;
+qboolean full_redraw_req = true;
+qboolean menu_first_update = true;
 
 void VID_MenuDraw(void);
 void VID_MenuKey(int key);
@@ -69,6 +76,8 @@ void VID_SetPalette (unsigned char *palette)
     }
 
     SDL_SetPaletteColors(sdl_palette, vid_palette, 0, 256);
+
+    full_redraw_req = true;
 }
 
 void VID_ShiftPalette (unsigned char *palette)
@@ -78,10 +87,20 @@ void VID_ShiftPalette (unsigned char *palette)
 
 void VID_Resize(int width, int height)
 {
+    SDL_Surface *win_surf = SDL_GetWindowSurface(vid_sdl_win);
+
     if (width < BASEWIDTH) width = BASEWIDTH;
     if (width > MAXWIDTH)  width = MAXWIDTH;
     if (height < BASEHEIGHT) height = BASEHEIGHT;
     if (height > MAXHEIGHT)  height = MAXHEIGHT;
+
+    if (win_surf)
+    {
+        int max_w_scaled = win_surf->w / vid_scale;
+        int max_h_scaled = win_surf->h / vid_scale;
+        if (width  > max_w_scaled) width  = max_w_scaled;
+        if (height > max_h_scaled) height = max_h_scaled;
+    }
 
     int pixcount = width * height;
 
@@ -96,8 +115,8 @@ void VID_Resize(int width, int height)
 
     vid.buffer = vid.conbuffer = vid.direct = vid_buffer;
 
-    vid.width = vid.conwidth = width;
-    vid.height = vid.conheight = height;
+    vid_size_x = vid.width  = vid.conwidth  = width;
+    vid_size_y = vid.height = vid.conheight = height;
     vid.aspect = 1.0;
     
     vid.rowbytes = vid.conrowbytes = width;
@@ -105,6 +124,8 @@ void VID_Resize(int width, int height)
     d_pzbuffer = zbuffer;
 
     vid.recalc_refdef = 1;
+
+    full_redraw_req = true;
 }
 
 void VID_Init (unsigned char *palette)
@@ -114,11 +135,12 @@ void VID_Init (unsigned char *palette)
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
         Sys_Error("Failed to initialize video: %s", SDL_GetError());
-        exit(1);
+        return;
     }
 
     vid.maxwarpwidth = BASEWIDTH;
     vid.maxwarpheight = BASEHEIGHT;
+    vid_scale = 1;
 
     VID_Resize(BASEWIDTH, BASEHEIGHT);
     
@@ -131,6 +153,11 @@ void VID_Init (unsigned char *palette)
     // sdl
     SDL_WindowFlags sdl_win_flags = SDL_WINDOW_RESIZABLE;//SDL_WINDOW_OPENGL;//SDL_WINDOW_MOUSE_CAPTURE | SDL_WINDOW_MOUSE_GRABBED;//0;//SDL_WINDOW_MOUSE_CAPTURE | SDL_WINDOW_MOUSE_GRABBED;
     vid_sdl_win = SDL_CreateWindow("Quake", vid.width, vid.height, sdl_win_flags);
+    if (!vid_sdl_win)
+    {
+        Sys_Error("Failed to create window: %s", SDL_GetError());
+        return;
+    }
     SDL_SetWindowMinimumSize(vid_sdl_win, BASEWIDTH, BASEHEIGHT);
     SDL_SetWindowMaximumSize(vid_sdl_win, MAXWIDTH, MAXHEIGHT);
     SDL_SetWindowSurfaceVSync(vid_sdl_win, 1);
@@ -140,6 +167,13 @@ void VID_Init (unsigned char *palette)
     
     vid_sdl_surf = SDL_CreateSurface(vid.width, vid.height, SDL_PIXELFORMAT_INDEX8);
     SDL_SetSurfacePalette(vid_sdl_surf, sdl_palette);
+
+    Cvar_RegisterVariable(&vid_config_x);
+    Cvar_RegisterVariable(&vid_config_y);
+    Cvar_RegisterVariable(&vid_config_scale);
+
+    strcpy(str_vid_size_x, vid_config_x.string);
+    strcpy(str_vid_size_y, vid_config_y.string);
 
     // options
     vid_menudrawfn = VID_MenuDraw;
@@ -185,8 +219,46 @@ void VID_Update (vrect_t *rects)
     SDL_Rect sdl_rect_src, sdl_rect_dst;
     int x, x_start, x_end;
     int y, y_start, y_end;
+    int w_scaled, h_scaled;
     byte *ptr_src, *ptr_src_row_start;
     Uint8 *ptr_dst, *ptr_dst_row_start;
+
+    if (first_update && vid_config_x.value && vid_config_y.value)
+    {
+        int w;
+        int h;
+        int scl;
+
+        w = atoi(vid_config_x.string);
+        h = atoi(vid_config_y.string);
+        vid_scale = scl = atoi(vid_config_scale.string);
+
+        if (w < BASEWIDTH)
+        {
+            w = BASEWIDTH;
+            sprintf(str_vid_size_x, "%d", w);
+            Cvar_Set("vid_config_x", str_vid_size_x);
+        }
+        if (h < BASEHEIGHT)
+        {
+            h = BASEHEIGHT;
+            sprintf(str_vid_size_y, "%d", h);
+            Cvar_Set("vid_config_y", str_vid_size_y);
+        }
+        if (scl < 1 || scl > 4)
+        {
+            char temp[4];
+            if (scl < 1) scl = 1;
+            if (scl > 4) scl = 4;
+            sprintf(temp, "%d", scl);
+            Cvar_Set("vid_config_scale", temp);
+            vid_scale = scl;
+        }
+
+        SDL_SetWindowSize(vid_sdl_win, w * vid_scale, h * vid_scale);
+
+        first_update = false;
+    }
 
     sdl_win_surf = SDL_GetWindowSurface(vid_sdl_win);
     if (!sdl_win_surf)
@@ -195,12 +267,27 @@ void VID_Update (vrect_t *rects)
     if (!vid_sdl_surf)
         return;
 
-    x_start = sdl_rect_src.x = sdl_rect_dst.x = rects->x;
-    y_start = sdl_rect_src.y = sdl_rect_dst.y = rects->y;
-    sdl_rect_src.w = sdl_rect_dst.w = rects->width;
-    sdl_rect_src.h = sdl_rect_dst.h = rects->height;
-    x_end = rects->x + rects->width;
-    y_end = rects->y + rects->height;
+    w_scaled = vid_sdl_surf->w * vid_scale;
+    h_scaled = vid_sdl_surf->h * vid_scale;
+
+    if (!full_redraw_req)
+    {
+        x_start = sdl_rect_src.x = sdl_rect_dst.x = rects->x;
+        y_start = sdl_rect_src.y = sdl_rect_dst.y = rects->y;
+        sdl_rect_src.w = sdl_rect_dst.w = rects->width;
+        sdl_rect_src.h = sdl_rect_dst.h = rects->height;
+        x_end = rects->x + rects->width;
+        y_end = rects->y + rects->height;
+    }
+    else
+    {
+        x_start = sdl_rect_src.x = sdl_rect_dst.x = 0;
+        y_start = sdl_rect_src.y = sdl_rect_dst.y = 0;
+        x_end = sdl_rect_src.w = sdl_rect_dst.w = vid.width;
+        y_end = sdl_rect_src.h = sdl_rect_dst.h = vid.height;
+        
+        SDL_FillSurfaceRect(sdl_win_surf, NULL, 0);
+    }
 
     SDL_LockSurface(vid_sdl_surf);
 
@@ -221,16 +308,28 @@ void VID_Update (vrect_t *rects)
 
     SDL_UnlockSurface(vid_sdl_surf);
 
-    if (sdl_win_surf->w > vid_sdl_surf->w)
-        sdl_rect_dst.x += (sdl_win_surf->w - vid_sdl_surf->w) / 2;
-    
-    if (sdl_win_surf->h > vid_sdl_surf->h)
-        sdl_rect_dst.y += (sdl_win_surf->h - vid_sdl_surf->h) / 2;
+    sdl_rect_dst.x += (sdl_win_surf->w - w_scaled) >> 1;
+    sdl_rect_dst.y += (sdl_win_surf->h - h_scaled) >> 1;
 
-    SDL_BlitSurface(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst);
+    if (vid_scale > 1)
+    {
+        sdl_rect_dst.w *= vid_scale;
+        sdl_rect_dst.h *= vid_scale;
+        SDL_BlitSurfaceScaled(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst, SDL_SCALEMODE_NEAREST);
+    }
+    else
+        SDL_BlitSurface(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst);
+
+    SDL_SetWindowMinimumSize(vid_sdl_win, BASEWIDTH * vid_scale, BASEHEIGHT * vid_scale);
+    SDL_SetWindowMaximumSize(vid_sdl_win, MAXWIDTH * vid_scale, MAXHEIGHT * vid_scale);
     
-    // SDL_UpdateWindowSurfaceRects(vid_sdl_win, &sdl_rect, 1);
-    SDL_UpdateWindowSurface(vid_sdl_win);
+    if (!full_redraw_req)
+        SDL_UpdateWindowSurfaceRects(vid_sdl_win, &sdl_rect_dst, 1);
+    else
+    {
+        SDL_UpdateWindowSurface(vid_sdl_win);
+        full_redraw_req = false;
+    }
 }
 
 /*
@@ -269,49 +368,161 @@ void VID_MenuDraw(void)
     qpic_t *p;
     char temp[100];
     int cursor_charnum = 10+((int)(realtime*4)&1);
+    const int pos1 = 36;
+    const int pos2 = 128;
+
+    if (menu_first_update)
+    {
+        strcpy(str_vid_size_x, vid_config_x.string);
+        strcpy(str_vid_size_y, vid_config_y.string);
+        vid_scale_menu = vid_scale = atoi(vid_config_scale.string);
+        menu_first_update = false;
+    }
 
     p = Draw_CachePic ("gfx/vidmodes.lmp");
     M_DrawPic ( (320-p->width)/2, 4, p);
 
-    M_Print (64, 36, "Width");
-    M_DrawTextBox (160, 28, 6, 1);
-    M_Print (168, 36, str_vid_size_x);
+    M_Print (64, pos1, "Width");
+    M_DrawTextBox (160, pos1 - 8, 6, 1);
+    M_Print (168, pos1, str_vid_size_x);
 
-    M_Print (64, 52, "Height");
-    M_DrawTextBox (160, 44, 6, 1);
+    M_Print (64, pos1 + (16 * 1), "Height");
+    M_DrawTextBox (160, pos1 + (16 * 1) - 8, 6, 1);
     M_Print (168, 52, str_vid_size_y);
 
-    M_Print (64, 80, "Press ENTER to set mode");
-    sprintf(temp, "D to make %dx%d the default", vid_size_x, vid_size_y);
-    M_Print (64, 80 + (8 * 4), temp);
-    sprintf(temp, "Current is %dx%d", vid_size_x, vid_size_y);
-    M_Print (64, 80 + (8 * 6), temp);
-    sprintf(temp, "Current default is %sx%s", vid_config_x.string, vid_config_y.string);
-    M_Print (64, 80 + (8 * 7), temp);
-    M_Print (64, 80 + (8 * 9), "ESC to exit");
+    M_Print (64, pos1 + (16 * 2), "Scale");
+    sprintf(temp, "%dx", (int)vid_scale_menu);
+    M_Print (168, pos1 + (16 * 2), temp);
 
-    if (vid_cursor == 0)
-        M_DrawCharacter(168 + (8 * strlen(str_vid_size_x)), 36, cursor_charnum);
-    if (vid_cursor == 1)
-        M_DrawCharacter(168 + (8 * strlen(str_vid_size_y)), 44, cursor_charnum);
+    M_Print (64, pos2, "Press ENTER to set mode");
+    sprintf(temp, "Current is %dx%d", vid_size_x, vid_size_y);
+    M_Print (64, pos2 + (8 * 2), temp);
+    M_Print (64, pos2 + (8 * 4), "ESC to exit");
+
+    switch (vid_cursor)
+    {
+        case 0:
+            M_DrawCharacter(168 + (8 * strlen(str_vid_size_x)), pos1, cursor_charnum);
+            break;
+        case 1:
+            M_DrawCharacter(168 + (8 * strlen(str_vid_size_y)), pos1 + 16, cursor_charnum);
+            break;
+        case 2:
+            M_DrawCharacter (200, pos1 + (16 * 2), 12+((int)(realtime*4)&1));
+            break;
+    }
+}
+
+int CheckNewSizeX(void)
+{
+    int new_w = atoi(str_vid_size_x);
+    if (new_w < BASEWIDTH) new_w = BASEWIDTH;
+    if (new_w > MAXWIDTH)  new_w = MAXWIDTH;
+    sprintf(str_vid_size_x, "%d", new_w);
+    return new_w;
+}
+
+int CheckNewSizeY(void)
+{
+    int new_h = atoi(str_vid_size_y);
+    if (new_h < BASEHEIGHT) new_h = BASEHEIGHT;
+    if (new_h > MAXHEIGHT)  new_h = MAXHEIGHT;
+    sprintf(str_vid_size_y, "%d", new_h);
+    return new_h;
 }
 
 void VID_MenuKey(int key)
 {
+    int len;
+    int new_w, new_h;
+    char temp[4];
+
+    switch (key)
+    {
+    case K_UPARROW:
+    case K_DOWNARROW:
+        if (vid_cursor == 0) CheckNewSizeX();
+        if (vid_cursor == 1) CheckNewSizeY();
+        break;
+    }
+
     switch (key)
     {
     case K_ESCAPE:
         S_LocalSound ("misc/menu1.wav");
+        menu_first_update = true;
         M_Menu_Options_f ();
         break;
     case K_UPARROW:
         S_LocalSound ("misc/menu1.wav");
+
+        vid_cursor--;
+        if (vid_cursor < 0) 
+            vid_cursor = 2;
         break;
     case K_DOWNARROW:
         S_LocalSound ("misc/menu1.wav");
+
+        vid_cursor++;
+        if (vid_cursor > 2)
+            vid_cursor = 0;
+        break;
+    case K_LEFTARROW:
+        if (vid_cursor == 2)
+        {
+            if (vid_scale_menu > 1)
+                vid_scale_menu--;
+        }
+        break;
+    case K_RIGHTARROW:
+        if (vid_cursor == 2)
+        {
+            if (vid_scale_menu < 4)
+                vid_scale_menu++;
+        }
         break;
     case K_ENTER:
         S_LocalSound ("misc/menu2.wav");
+        new_w = CheckNewSizeX();
+        new_h = CheckNewSizeY();
+        vid_scale = vid_scale_menu;
+        VID_Resize(new_w, new_h);
+        SDL_SetWindowSize(vid_sdl_win, new_w * vid_scale, new_h * vid_scale);
+        sprintf(temp, "%d", vid_scale);
+        Cvar_Set("vid_config_x", str_vid_size_x);
+        Cvar_Set("vid_config_y", str_vid_size_y);
+        Cvar_Set("vid_config_scale", temp);
+        break;
+    case K_BACKSPACE:
+        switch (vid_cursor)
+        {
+            case 0:
+                len = strlen(str_vid_size_x);
+                if (len) str_vid_size_x[len - 1] = '\0';
+                break;
+            case 1:
+                len = strlen(str_vid_size_y);
+                if (len) str_vid_size_y[len - 1] = '\0';
+                break;
+        }
+        break;
+    default:
+        if (key >= '0' && key <= '9')
+        {
+            switch (vid_cursor)
+            {
+                case 0:
+                    len = strlen(str_vid_size_x);
+                    if (len < 4)
+                        str_vid_size_x[len] = key;
+                    break;
+                case 1:
+                    len = strlen(str_vid_size_y);
+                    if (len < 4)
+                        str_vid_size_y[len] = key;
+                    break;
+            }
+        }
         break;
     }
 }

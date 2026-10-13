@@ -20,6 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
+#ifdef _SDL
+#include "sdl_global.h"
+#endif
+
 extern cvar_t	pausable;
 
 int	current_skill;
@@ -465,6 +469,7 @@ Host_Savegame_f
 void Host_Savegame_f (void)
 {
 	char	name[256];
+	char	*name_case_corrected = NULL;
 	FILE	*f;
 	int		i;
 	char	comment[SAVEGAME_COMMENT_LENGTH+1];
@@ -515,10 +520,21 @@ void Host_Savegame_f (void)
 	COM_DefaultExtension (name, ".sav");
 	
 	Con_Printf ("Saving game to %s...\n", name);
+#ifdef _SDL
+	// make sure overwrite like on dos/windows
+	if (!QSDL_FindCorrectPathCase(name, &name_case_corrected))
+		f = fopen (name, "w");
+	else
+		f = fopen (name_case_corrected, "w");
+#else
 	f = fopen (name, "w");
+#endif
 	if (!f)
 	{
 		Con_Printf ("ERROR: couldn't open.\n");
+	#ifdef _SDL
+		QSDL_FreeP((void *)&name_case_corrected);
+	#endif
 		return;
 	}
 	
@@ -550,6 +566,10 @@ void Host_Savegame_f (void)
 	}
 	fclose (f);
 	Con_Printf ("done.\n");
+
+#ifdef _SDL
+	QSDL_FreeP((void *)&name_case_corrected);
+#endif
 }
 
 
@@ -561,6 +581,7 @@ Host_Loadgame_f
 void Host_Loadgame_f (void)
 {
 	char	name[MAX_OSPATH];
+	char	*name_case_corrected = NULL;
 	FILE	*f;
 	char	mapname[MAX_QPATH];
 	float	time, tfloat;
@@ -590,11 +611,20 @@ void Host_Loadgame_f (void)
 //	SCR_BeginLoadingPlaque ();
 
 	Con_Printf ("Loading game from %s...\n", name);
+#ifdef _SDL
+	if (!QSDL_FindCorrectPathCase(name, &name_case_corrected))
+	{
+		Con_Printf ("ERROR: couldn't find '%s'.\n", name);
+		return;
+	}
+	f = fopen (name_case_corrected, "r");
+#else
 	f = fopen (name, "r");
+#endif
 	if (!f)
 	{
 		Con_Printf ("ERROR: couldn't open.\n");
-		return;
+		goto End;
 	}
 
 	fscanf (f, "%i\n", &version);
@@ -602,7 +632,7 @@ void Host_Loadgame_f (void)
 	{
 		fclose (f);
 		Con_Printf ("Savegame is version %i, not %i\n", version, SAVEGAME_VERSION);
-		return;
+		goto End;
 	}
 	fscanf (f, "%s\n", str);
 	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
@@ -631,7 +661,7 @@ void Host_Loadgame_f (void)
 	if (!sv.active)
 	{
 		Con_Printf ("Couldn't load map\n");
-		return;
+		goto End;
 	}
 	sv.paused = true;		// pause until all clients connect
 	sv.loadgame = true;
@@ -704,6 +734,11 @@ void Host_Loadgame_f (void)
 		CL_EstablishConnection ("local");
 		Host_Reconnect_f ();
 	}
+
+End:
+#ifdef _SDL
+	QSDL_FreeP((void *)&name_case_corrected);
+#endif
 }
 
 #ifdef QUAKE2

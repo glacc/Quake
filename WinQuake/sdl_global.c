@@ -25,6 +25,9 @@ SDL_Mutex *audio_mutex = NULL;
 
 // VIDEO
 extern SDL_Window *vid_sdl_win;
+extern int vid_size_x;
+extern int vid_size_y;
+extern int vid_scale;
 
 // FILE
 struct path_enum_s
@@ -162,7 +165,7 @@ void QSDL_DispatchEvents(void)
                 win_surf = SDL_GetWindowSurface(vid_sdl_win);
 
                 if (win_surf)
-                    VID_Resize(win_surf->w, win_surf->h);
+                    VID_Resize(win_surf->w / vid_scale, win_surf->h / vid_scale);
 
                 break;
             case SDL_EVENT_KEY_DOWN:

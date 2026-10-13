@@ -25,6 +25,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "vid_wide.h"
 
+#ifdef _SDL
+#include "sdl_global.h"
+#endif
+
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
@@ -449,6 +453,7 @@ void M_ScanSaves (void)
 {
 	int		i, j;
 	char	name[MAX_OSPATH];
+	char	*name_case_corrected = NULL;
 	FILE	*f;
 	int		version;
 
@@ -457,7 +462,13 @@ void M_ScanSaves (void)
 		strcpy (m_filenames[i], "--- UNUSED SLOT ---");
 		loadable[i] = false;
 		sprintf (name, "%s/s%i.sav", com_gamedir, i);
+	#if _SDL
+		if (!QSDL_FindCorrectPathCase(name, &name_case_corrected))
+			continue;
+		f = fopen (name_case_corrected, "r");
+	#else
 		f = fopen (name, "r");
+	#endif
 		if (!f)
 			continue;
 		fscanf (f, "%i\n", &version);
@@ -471,6 +482,10 @@ void M_ScanSaves (void)
 		loadable[i] = true;
 		fclose (f);
 	}
+
+#ifdef _SDL
+	QSDL_FreeP((void *)&name_case_corrected);
+#endif
 }
 
 void M_Menu_Load_f (void)

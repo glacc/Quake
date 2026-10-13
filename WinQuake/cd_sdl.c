@@ -54,6 +54,8 @@ int is_big_endian;
 
 int wav_position;
 
+extern cvar_t bgmvolume;
+
 void ClearWavBuf(void)
 {
     if (!wav_data)
@@ -80,6 +82,8 @@ void CDAudio_Mix(int len)
     if (!wav_data)
         return;
 
+    float bgm_vol = bgmvolume.value;
+
     wav_data_as_int16 = (int16_t *)wav_data;
     offset = 0;
     max_offset = len >> 1;
@@ -88,8 +92,8 @@ void CDAudio_Mix(int len)
     {
         int wav_offset = wav_position << 1;
         
-        audio_buf32[offset++] += wav_data_as_int16[wav_offset++];
-        audio_buf32[offset++] += wav_data_as_int16[wav_offset];
+        audio_buf32[offset++] += wav_data_as_int16[wav_offset++] * bgm_vol;
+        audio_buf32[offset++] += wav_data_as_int16[wav_offset]   * bgm_vol;
         
         sample_progress += sample_delta_f24;
         wav_position += sample_progress >> 24;
