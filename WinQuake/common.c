@@ -21,6 +21,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
+#ifdef _SDL
+#include "sdl_global.h"
+#endif
+
 #define NUM_SAFE_ARGVS  7
 
 static char     *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
@@ -1404,9 +1408,21 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 					}
 					else
 					{       // open a new file on the pakfile
+					#ifdef _SDL
+						char *filename_case_corrected = NULL;
+						*file = NULL;
+						if (QSDL_FindCorrectPathCase(pak->filename, &filename_case_corrected))
+						{
+							*file = fopen (filename_case_corrected, "rb");
+							if (*file)
+								fseek (*file, pak->files[i].filepos, SEEK_SET);
+						}
+						QSDL_FreeP((void *)&filename_case_corrected);
+					#else
 						*file = fopen (pak->filename, "rb");
 						if (*file)
 							fseek (*file, pak->files[i].filepos, SEEK_SET);
+					#endif
 					}
 					com_filesize = pak->files[i].filelen;
 					return com_filesize;
@@ -1647,6 +1663,8 @@ pack_t *COM_LoadPackFile (char *packfile)
 	if (numpackfiles != PAK0_COUNT)
 		com_modified = true;    // not the original file
 
+	printf("Pack: %s\n", packfile);
+
 	newfiles = Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
 
 	Sys_FileSeek (packhandle, header.dirofs);
@@ -1665,6 +1683,8 @@ pack_t *COM_LoadPackFile (char *packfile)
 		strcpy (newfiles[i].name, info[i].name);
 		newfiles[i].filepos = LittleLong(info[i].filepos);
 		newfiles[i].filelen = LittleLong(info[i].filelen);
+
+		printf("%s\n", info[i].name);
 	}
 
 	pack = Hunk_Alloc (sizeof (pack_t));

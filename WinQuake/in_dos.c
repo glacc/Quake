@@ -1,5 +1,6 @@
 /*
 Copyright (C) 1996-1997 Id Software, Inc.
+Copyright (C) 2026 Glacc
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -284,6 +285,9 @@ void IN_MouseMove (usercmd_t *cmd)
 	dos_int86(0x33);
 	mx = (short)regs.x.cx;
 	my = (short)regs.x.dx;
+
+	if (cl.paused || key_dest != key_game)
+		return;
 
 	if (mx || my)
 	{

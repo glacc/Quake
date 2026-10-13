@@ -24,10 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "vid_wide.h"
 
-#define FOV_HORZ 1
-
 #if FOV_HORZ
-#define FOV_DEFAULT "60"
+#define FOV_DEFAULT "65"
 #else
 #define FOV_DEFAULT "90"
 #endif
@@ -265,20 +263,6 @@ static void SCR_CalcRefdef (void)
 	if (scr_viewsize.value > 120)
 		Cvar_Set ("viewsize","120");
 
-// bound field of view
-	if (scr_fov.value < 10)
-		Cvar_Set ("fov","10");
-	if (scr_fov.value > 170)
-		Cvar_Set ("fov","170");
-
-#if FOV_HORZ
-	r_refdef.fov_y = scr_fov.value;
-	r_refdef.fov_x = CalcFov (r_refdef.fov_y, r_refdef.vrect.width * aspect_ratio_list[Wide_GetAspectRatio()].ratio, r_refdef.vrect.height);
-#else
-	r_refdef.fov_x = scr_fov.value;
-	r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
-#endif
-
 // intermission is always full screen	
 	if (cl.intermission)
 		size = 120;
@@ -300,6 +284,20 @@ static void SCR_CalcRefdef (void)
 	vrect.height = vid.height;
 
 	R_SetVrect (&vrect, &scr_vrect, sb_lines);
+
+	// bound field of view
+	if (scr_fov.value < 10)
+		Cvar_Set ("fov","10");
+	if (scr_fov.value > 170)
+		Cvar_Set ("fov","170");
+
+#if FOV_HORZ
+	r_refdef.fov_y = scr_fov.value;
+	r_refdef.fov_x = CalcFov (r_refdef.fov_y, scr_vrect.width * aspect_ratio_list[Wide_GetAspectRatio()].ratio, scr_vrect.height);
+#else
+	r_refdef.fov_x = scr_fov.value;
+	r_refdef.fov_y = CalcFov (r_refdef.fov_x, scr_vrect.width * aspect_ratio_list[Wide_GetAspectRatio()].ratio, scr_vrect.height);
+#endif
 
 // guard against going from one mode to another that's less than half the
 // vertical resolution
@@ -495,7 +493,7 @@ void SCR_SetUpToDrawConsole (void)
 		scr_con_current = scr_conlines;
 	}
 	else if (key_dest == key_console)
-		scr_conlines = vid.height/2;	// half screen
+		scr_conlines = vid.height >> 1;	// half screen
 	else
 		scr_conlines = 0;				// none visible
 	
@@ -797,6 +795,13 @@ int SCR_ModalMessage (char *text)
 	do
 	{
 		key_count = -1;		// wait for a key down and up
+
+	#ifdef _SDL
+		// simple patch to avoid this loop blocking event dispatching and making whole game stops responsing forever
+		QSDL_DispatchEvents();
+		SDL_Delay(50);
+	#endif
+
 		Sys_SendKeyEvents ();
 	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE);
 

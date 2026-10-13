@@ -30,6 +30,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	LINUX_VERSION		1.30
 #define	X11_VERSION			1.10
 
+#define FOV_HORZ 1
+
+#include "ptr2int.h"
+
 //define	PARANOID			// speed sapping error checking
 
 #ifdef QUAKE2

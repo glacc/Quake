@@ -1,4 +1,18 @@
-*.o
-*.log
+/*.o
+/*.log
 
-QUAKE_N.exe
+/pr_64fix/*
+
+buildsdl
+BUILDDOS
+
+compile_commands.json
+
+mkdos.bat
+mkdoslog.bat
+mksdl.sh
+mkfsdl
+mkfdos
+
+_old_
+.cache

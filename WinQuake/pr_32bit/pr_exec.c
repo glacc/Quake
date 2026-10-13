@@ -182,6 +182,41 @@ void PR_PrintStatement (dstatement_t *s)
 	Con_Printf ("\n");
 }
 
+void PR_PrintStatementStdout (dstatement_t *s)
+{
+	int		i;
+	
+	if ( (unsigned)s->op < sizeof(pr_opnames)/sizeof(pr_opnames[0]))
+	{
+		printf ("%s ",  pr_opnames[s->op]);
+		i = strlen(pr_opnames[s->op]);
+		for ( ; i<10 ; i++)
+			printf (" ");
+	}
+		
+	if (s->op == OP_IF || s->op == OP_IFNOT)
+		printf ("%sbranch %i",PR_GlobalString(s->a),s->b);
+	else if (s->op == OP_GOTO)
+	{
+		printf ("branch %i",s->a);
+	}
+	else if ( (unsigned)(s->op - OP_STORE_F) < 6)
+	{
+		printf ("%s",PR_GlobalString(s->a));
+		printf ("%s", PR_GlobalStringNoContents(s->b));
+	}
+	else
+	{
+		if (s->a)
+			printf ("%s",PR_GlobalString(s->a));
+		if (s->b)
+			printf ("%s",PR_GlobalString(s->b));
+		if (s->c)
+			printf ("%s", PR_GlobalStringNoContents(s->c));
+	}
+	printf ("\n");
+}
+
 /*
 ============
 PR_StackTrace
@@ -225,6 +260,12 @@ void PR_Profile_f (void)
 	int			max;
 	int			num;
 	int			i;
+
+	if (!progs)
+	{
+		Con_Printf("Prog not loaded.\n");
+		return;
+	}
 	
 	num = 0;	
 	do
@@ -353,6 +394,11 @@ int PR_LeaveFunction (void)
 }
 
 
+void PR_PrintDbgPtr(void *dbg_ptr)
+{
+	printf("\t** ptr: 0x%16lX **\n", (unsigned long)dbg_ptr);
+}
+
 /*
 ====================
 PR_ExecuteProgram
@@ -369,6 +415,9 @@ void PR_ExecuteProgram (func_t fnum)
 	edict_t	*ed;
 	int		exitdepth;
 	eval_t	*ptr;
+	int		itercnt = 0;
+	
+	eval_t	*eval_dbg_ptr;
 
 	if (!fnum || fnum >= progs->numfunctions)
 	{
@@ -389,6 +438,8 @@ void PR_ExecuteProgram (func_t fnum)
 	
 while (1)
 {
+	itercnt++;
+	
 	s++;	// next statement
 
 	st = &pr_statements[s];
@@ -404,6 +455,9 @@ while (1)
 	
 	if (pr_trace)
 		PR_PrintStatement (st);
+
+	//PR_PrintStatementStdout(st);
+	//printf("\t** regs as int: a: 0x%8X, b: 0x%8X, c: 0x%8X **\n", a->_int, b->_int, c->_int);
 		
 	switch (st->op)
 	{
@@ -549,6 +603,7 @@ while (1)
 	case OP_STOREP_S:
 	case OP_STOREP_FNC:		// pointers
 		ptr = (eval_t *)((byte *)sv.edicts + b->_int);
+		//PR_PrintDbgPtr(ptr);
 		ptr->_int = a->_int;
 		break;
 	case OP_STOREP_V:
@@ -577,7 +632,10 @@ while (1)
 #ifdef PARANOID
 		NUM_FOR_EDICT(ed);		// make sure it's in range
 #endif
-		a = (eval_t *)((int *)&ed->v + b->_int);
+		eval_dbg_ptr = (eval_t *)((int *)&ed->v + b->_int);
+		//PR_PrintDbgPtr(eval_dbg_ptr);
+
+		a = eval_dbg_ptr;//((int *)&ed->v + b->_int);
 		c->_int = a->_int;
 		break;
 

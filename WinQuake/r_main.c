@@ -368,7 +368,11 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 
 	R_SetVrect (pvrect, &r_refdef.vrect, lineadj);
 
+#if FOV_HORZ
+	verticalFieldOfView = 2.0 * tan (r_refdef.fov_y/360*M_PI);
+#else
 	r_refdef.horizontalFieldOfView = 2.0 * tan (r_refdef.fov_x/360*M_PI);
+#endif
 	r_refdef.fvrectx = (float)r_refdef.vrect.x;
 	r_refdef.fvrectx_adj = (float)r_refdef.vrect.x - 0.5;
 	r_refdef.vrect_x_adj_shift20 = (r_refdef.vrect.x<<20) + (1<<19) - 1;
@@ -402,7 +406,11 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 // 320*240 1.0 pixelAspect = 1.3333 screenAspect
 // proper 320*200 pixelAspect = 0.8333333
 
+#if FOV_HORZ
+	r_refdef.horizontalFieldOfView = verticalFieldOfView * screenAspect;
+#else
 	verticalFieldOfView = r_refdef.horizontalFieldOfView / screenAspect;
+#endif
 
 // values for perspective projection
 // if math were exact, the values would range from 0.5 to to range+0.5
