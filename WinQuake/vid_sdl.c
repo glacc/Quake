@@ -94,12 +94,17 @@ void VID_ResizeSurface(int width, int height)
 {
     SDL_Surface *win_surf = SDL_GetWindowSurface(vid_sdl_win);
     int pixcount;
-    int size_surfcache = D_SurfaceCacheForRes(width, height);
+    int size_surfcache;
 
     if (width < BASEWIDTH) width = BASEWIDTH;
     if (width > MAXWIDTH)  width = MAXWIDTH;
     if (height < BASEHEIGHT) height = BASEHEIGHT;
     if (height > MAXHEIGHT)  height = MAXHEIGHT;
+
+    if (vid.width == width && vid.height == height)
+        return;
+    
+    size_surfcache = D_SurfaceCacheForRes(width, height);
 
     pixcount = width * height;
 
@@ -156,6 +161,8 @@ void VID_ResizeWindow(int width, int height, bool from_event)
         vid_scale_safe--;
     
     VID_ResizeSurface(width / vid_scale_safe, height / vid_scale_safe);
+
+    full_redraw_req = true;
 }
 
 void VID_Init (unsigned char *palette)
@@ -322,7 +329,7 @@ void VID_Update (vrect_t *rects)
         x_end = sdl_rect_src.w = sdl_rect_dst.w = vid.width;
         y_end = sdl_rect_src.h = sdl_rect_dst.h = vid.height;
         
-        SDL_FillSurfaceRect(sdl_win_surf, NULL, 0);
+        SDL_FillSurfaceRect(sdl_win_surf, NULL, SDL_MapSurfaceRGB(sdl_win_surf, 0, 0, 0));
     }
 
     SDL_LockSurface(vid_sdl_surf);
@@ -344,10 +351,10 @@ void VID_Update (vrect_t *rects)
 
     SDL_UnlockSurface(vid_sdl_surf);
 
-    sdl_rect_dst.x += (sdl_win_surf->w - w_scaled) >> 1;
-    sdl_rect_dst.y += (sdl_win_surf->h - h_scaled) >> 1;
+    sdl_rect_dst.x += (win_w - w_scaled) >> 1;
+    sdl_rect_dst.y += (win_h - h_scaled) >> 1;
 
-    if (scale > 1)
+    if (scale > 1 && SDL_LockSurface(sdl_win_surf))
     {
         int src_x1, src_x2;
         int src_y1;
@@ -359,7 +366,9 @@ void VID_Update (vrect_t *rects)
 
         sdl_rect_dst.w *= scale;
         sdl_rect_dst.h *= scale;
-        // SDL_BlitSurfaceScaled(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst, SDL_SCALEMODE_NEAREST);
+
+        // too slow...
+        //SDL_BlitSurfaceScaled(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst, SDL_SCALEMODE_NEAREST);
 
         src_x1 = sdl_rect_dst.x;
         src_x2 = src_x1 + vid_sdl_surf->w;
@@ -402,6 +411,8 @@ void VID_Update (vrect_t *rects)
 
             dst_y1 += scale;
         }
+
+        SDL_LockSurface(sdl_win_surf);
     }
     else
         SDL_BlitSurface(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst);
