@@ -1346,7 +1346,7 @@ void M_Options_Key (int k)
 char *bindnames[][2] =
 {
 {"+attack", 		"attack"},
-{"impulse 10", 		"change weapon"},
+{"impulse 10", 		"next weapon"},
 {"+jump", 			"jump / swim up"},
 {"+forward", 		"walk forward"},
 {"+back", 			"backpedal"},
@@ -1362,7 +1362,8 @@ char *bindnames[][2] =
 {"+mlook", 			"mouse look"},
 {"+klook", 			"keyboard look"},
 {"+moveup",			"swim up"},
-{"+movedown",		"swim down"}
+{"+movedown",		"swim down"},
+{"impulse 12",		"prev weapon"},
 };
 
 #define	NUMCOMMANDS	(sizeof(bindnames)/sizeof(bindnames[0]))
@@ -2021,16 +2022,20 @@ forward:
 	}
 
 	if (DirectConfig && (serialConfig_cursor == 3 || serialConfig_cursor == 4))
+	{
 		if (key == K_UPARROW)
 			serialConfig_cursor = 2;
 		else
 			serialConfig_cursor = 5;
+	}
 
 	if (SerialConfig && StartingGame && serialConfig_cursor == 4)
+	{
 		if (key == K_UPARROW)
 			serialConfig_cursor = 3;
 		else
 			serialConfig_cursor = 5;
+	}
 }
 
 //=============================================================================
@@ -2394,10 +2399,12 @@ void M_LanConfig_Key (int key)
 	}
 
 	if (StartingGame && lanConfig_cursor == 2)
+	{
 		if (key == K_UPARROW)
 			lanConfig_cursor = 1;
 		else
 			lanConfig_cursor = 0;
+	}
 
 	l =  Q_atoi(lanConfig_portname);
 	if (l > 65535)

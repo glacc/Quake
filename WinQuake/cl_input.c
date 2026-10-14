@@ -307,9 +307,17 @@ void CL_BaseMove (usercmd_t *cmd)
 //
 	if (in_speed.state & 1)
 	{
-		cmd->forwardmove *= cl_movespeedkey.value;
-		cmd->sidemove *= cl_movespeedkey.value;
-		cmd->upmove *= cl_movespeedkey.value;
+		float mul = cl_movespeedkey.value;
+
+	#if 0
+		// slow down if always run (walk)
+		if (cl_forwardspeed.value > 200)
+			mul = 1.0F / mul;
+	#endif
+
+		cmd->forwardmove *= mul;
+		cmd->sidemove *= mul;
+		cmd->upmove *= mul;
 	}
 
 #ifdef QUAKE2

@@ -40,7 +40,8 @@ struct path_enum_s
 };
 
 extern void Host_Quit_f(void);
-extern void VID_Resize(int width, int height);
+extern void VID_ResizeSurface(int width, int height);
+extern void VID_ResizeWindow(int width, int height, bool from_event);
 
 extern void CDAudio_Mix(int len);
 extern void Sound_Mix(int len);
@@ -164,8 +165,13 @@ void QSDL_DispatchEvents(void)
 
                 win_surf = SDL_GetWindowSurface(vid_sdl_win);
 
+                /*
                 if (win_surf)
-                    VID_Resize(win_surf->w / vid_scale, win_surf->h / vid_scale);
+                    VID_ResizeSurface(win_surf->w / vid_scale, win_surf->h / vid_scale);
+                */
+
+                if (win_surf)
+                    VID_ResizeWindow(win_surf->w, win_surf->h, true);
 
                 break;
             case SDL_EVENT_KEY_DOWN:
