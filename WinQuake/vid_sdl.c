@@ -103,18 +103,16 @@ void VID_ResizeSurface(int width, int height)
 
     pixcount = width * height;
 
-    if (vid_buffer) free(vid_buffer);
-    vid_buffer = malloc(sizeof(byte) * pixcount);
-    if (zbuffer) free(zbuffer);
-    zbuffer = malloc(sizeof(short) * pixcount);
-
     if (surfcache)
     {
         D_FlushCaches();
         free(surfcache);
     }
     surfcache = malloc(size_surfcache);
-    D_InitCaches (surfcache, size_surfcache);
+    if (vid_buffer) free(vid_buffer);
+    vid_buffer = malloc(sizeof(byte) * pixcount);
+    if (zbuffer) free(zbuffer);
+    zbuffer = malloc(sizeof(short) * pixcount);
 
     if (vid_sdl_surf) SDL_DestroySurface(vid_sdl_surf);
     vid_sdl_surf = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_INDEX8);
@@ -129,6 +127,8 @@ void VID_ResizeSurface(int width, int height)
     vid.rowbytes = vid.conrowbytes = width;
 
     d_pzbuffer = zbuffer;
+
+    D_InitCaches (surfcache, size_surfcache);
 
     vid.recalc_refdef = 1;
 

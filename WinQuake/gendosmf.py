@@ -23,6 +23,8 @@ cflags_cc = cflags_cc_release
 cflags_as = cflags_as_release
 ldflags_extra = ldflags_release
 
+no_asm = False
+
 for arg in sys.argv[1:]:
     match arg:
         case "release":
@@ -31,6 +33,8 @@ for arg in sys.argv[1:]:
             cflags_cc = cflags_cc_debug
             cflags_as = cflags_as_debug
             ldflags_extra = ldflags_debug
+        case "noasm":
+            no_asm = True
 
 do_cc = "$(CC) -std=gnu90 -trigraphs -MMD $(CFLAGS_ALL) $(CFLAGS_CC) $(CFLAGS_INC) -c $< -o $@"
 do_as = "$(CC) -x assembler-with-cpp -MMD $(CFLAGS_ALL) $(CFLAGS_AS) $(CFLAGS_INC) -c $< -o $@"
@@ -61,6 +65,10 @@ c_files_exclude = {
 s_files_exclude = {
     "sys_wina.s"
 }
+
+if no_asm:
+    # s_files_exclude.add("sys_dosa.s")
+    cflags_all += " -D_DISABLE_ID386"
 
 def is_excluded_c(filename: str):
     if filename.startswith("gl_") or filename.startswith("sdl_") or filename.endswith("_sdl.c"):

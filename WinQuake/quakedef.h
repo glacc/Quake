@@ -68,7 +68,11 @@ void	VID_UnlockBuffer (void);
 #endif
 
 #if defined __i386__ // && !defined __sun__
+#ifndef _DISABLE_ID386
 #define id386	1
+#else
+#define id386	0
+#endif
 #else
 #define id386	0
 #endif

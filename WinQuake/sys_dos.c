@@ -174,6 +174,17 @@ void Sys_PopFPCW (void);
 #define LEAVE_FOR_CACHE (512*1024)		//FIXME: tune
 #define LOCKED_FOR_MALLOC (128*1024)	//FIXME: tune
 
+#if !id386 && 0
+
+void Sys_HighFPPrecision (void)
+{
+}
+
+void Sys_LowFPPrecision (void)
+{
+}
+
+#endif
 
 void Sys_DetectWin95 (void)
 {
@@ -452,9 +463,11 @@ char *Sys_ConsoleInput(void)
 void Sys_Init(void)
 {
 
+#if id386
 	MaskExceptions ();
 
 	Sys_SetFPCW ();
+#endif
 
     dos_outportb(0x43, 0x34); // set system timer to mode 2
     dos_outportb(0x40, 0);    // for the Sys_FloatTime() function

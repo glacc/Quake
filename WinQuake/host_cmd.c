@@ -739,6 +739,7 @@ End:
 #ifdef _SDL
 	QSDL_FreeP((void *)&name_case_corrected);
 #endif
+	return;
 }
 
 #ifdef QUAKE2

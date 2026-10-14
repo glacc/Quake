@@ -9,7 +9,7 @@ output_name = "QUAKESDL.ELF"
 
 cc = "gcc"
 
-cflags_all = "-fcommon -D_SDL"# -DMAXWIDTH=2048 -DMAXHEIGHT=2048"
+cflags_all = "-fcommon -D_SDL "# -DMAXWIDTH=2048 -DMAXHEIGHT=2048"
 ldflags_lib = "-lm -lSDL3 -lvorbisfile"
 
 cflags_cc_release = "-fexpensive-optimizations -O3"
@@ -24,6 +24,7 @@ cflags_as = cflags_as_release
 ldflags_extra = ldflags_release
 
 build_32bit = False
+no_asm = False
 
 for arg in sys.argv[1:]:
     match arg:
@@ -33,6 +34,8 @@ for arg in sys.argv[1:]:
             cflags_cc = cflags_cc_debug
             cflags_as = cflags_as_debug
             ldflags_extra = ldflags_debug
+        case "noasm":
+            no_asm = True
         case "-m32":
             cflags_all += " -m32 -march=pentiumpro"
             ldflags_extra += " -m32"
@@ -72,9 +75,14 @@ c_files_not_exc = {
 
 s_files_exclude = {
     "sys_dosa.s",
+    #"sys_wina.s"
     "d_copy.s",
     "snd_mixa.s",
 }
+
+if no_asm:
+    s_files_exclude.add("sys_wina.s")
+    cflags_all += " -D_DISABLE_ID386"
 
 if build_32bit:
     dirs.add("pr_32bit")
