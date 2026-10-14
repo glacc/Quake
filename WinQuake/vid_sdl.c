@@ -249,7 +249,7 @@ void VID_Update (vrect_t *rects)
     int x, x_start, x_end;
     int y, y_start, y_end;
     int w_scaled, h_scaled;
-    int scale = vid_scale_safe;
+    int scale;
     byte *ptr_src, *ptr_src_row_start;
     Uint8 *ptr_dst, *ptr_dst_row_start;
 
@@ -290,6 +290,8 @@ void VID_Update (vrect_t *rects)
 
         first_update = false;
     }
+
+    scale = vid_scale_safe;
 
     sdl_win_surf = SDL_GetWindowSurface(vid_sdl_win);
     if (!sdl_win_surf)
