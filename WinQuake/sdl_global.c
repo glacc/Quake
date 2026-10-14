@@ -1,3 +1,5 @@
+#include "quakedef.h"
+
 #include "sdl_global.h"
 
 #include <malloc.h>
@@ -38,6 +40,8 @@ struct path_enum_s
     int maxlen;
     int found;
 };
+
+extern qboolean msg_suppress_1;
 
 extern void Host_Quit_f(void);
 extern void VID_ResizeSurface(int width, int height);
@@ -146,6 +150,8 @@ void QSDL_DispatchEvents(void)
     SDL_Surface *win_surf = NULL;
     SDL_Rect rect;
 
+    qboolean msg_suppress_1_old = msg_suppress_1;
+
     if (vid_sdl_win)
         win_surf = SDL_GetWindowSurface(vid_sdl_win);
 
@@ -170,8 +176,10 @@ void QSDL_DispatchEvents(void)
                     VID_ResizeSurface(win_surf->w / vid_scale, win_surf->h / vid_scale);
                 */
 
+                msg_suppress_1 = true;
                 if (win_surf)
                     VID_ResizeWindow(win_surf->w, win_surf->h, true);
+                msg_suppress_1 = msg_suppress_1_old;
 
                 break;
             case SDL_EVENT_KEY_DOWN:

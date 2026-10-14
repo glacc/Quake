@@ -45,11 +45,11 @@ int vid_scale_menu;
 int vid_size_x = BASEWIDTH;
 int vid_size_y = BASEHEIGHT;
 int vid_scale = 1;
-int vid_scale_old = 1;
+int vid_scale_safe = 1;
 
 byte  *vid_buffer = NULL;
 short *zbuffer = NULL;
-byte  surfcache[256*1024];
+byte  *surfcache = NULL;
 // byte  *linebuf = NULL;
 
 SDL_Color vid_palette[256];
@@ -93,28 +93,28 @@ void VID_ShiftPalette (unsigned char *palette)
 void VID_ResizeSurface(int width, int height)
 {
     SDL_Surface *win_surf = SDL_GetWindowSurface(vid_sdl_win);
+    int pixcount;
+    int size_surfcache = D_SurfaceCacheForRes(width, height);
 
     if (width < BASEWIDTH) width = BASEWIDTH;
     if (width > MAXWIDTH)  width = MAXWIDTH;
     if (height < BASEHEIGHT) height = BASEHEIGHT;
     if (height > MAXHEIGHT)  height = MAXHEIGHT;
 
-    /*
-    if (win_surf)
-    {
-        int max_w_scaled = win_surf->w / vid_scale;
-        int max_h_scaled = win_surf->h / vid_scale;
-        if (width  > max_w_scaled) width  = max_w_scaled;
-        if (height > max_h_scaled) height = max_h_scaled;
-    }
-    */
-
-    int pixcount = width * height;
+    pixcount = width * height;
 
     if (vid_buffer) free(vid_buffer);
     vid_buffer = malloc(sizeof(byte) * pixcount);
     if (zbuffer) free(zbuffer);
     zbuffer = malloc(sizeof(short) * pixcount);
+
+    if (surfcache)
+    {
+        D_FlushCaches();
+        free(surfcache);
+    }
+    surfcache = malloc(size_surfcache);
+    D_InitCaches (surfcache, size_surfcache);
 
     if (vid_sdl_surf) SDL_DestroySurface(vid_sdl_surf);
     vid_sdl_surf = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_INDEX8);
@@ -139,11 +139,7 @@ void VID_ResizeWindow(int width, int height, bool from_event)
 {
     SDL_Surface *win_surf;
 
-    int min_w = BASEWIDTH  * vid_scale;
-    int min_h = BASEHEIGHT * vid_scale;
-
-    if (width < min_w)  width  = min_w;
-    if (height < min_h) height = min_h;
+    SDL_SetWindowMaximumSize(vid_sdl_win, MAXWIDTH * vid_scale, MAXHEIGHT * vid_scale);
 
     if (!from_event)
         SDL_SetWindowSize(vid_sdl_win, width, height);
@@ -154,8 +150,12 @@ void VID_ResizeWindow(int width, int height, bool from_event)
         width  = win_surf->w;
         height = win_surf->h;
     }
+
+    vid_scale_safe = vid_scale;
+    while (((BASEWIDTH * vid_scale_safe > width) || (BASEHEIGHT * vid_scale_safe > height)) && (vid_scale_safe > 1))
+        vid_scale_safe--;
     
-    VID_ResizeSurface(width / vid_scale, height / vid_scale);
+    VID_ResizeSurface(width / vid_scale_safe, height / vid_scale_safe);
 }
 
 void VID_Init (unsigned char *palette)
@@ -177,8 +177,6 @@ void VID_Init (unsigned char *palette)
     vid.numpages = 1;
     vid.colormap = host_colormap;
     vid.fullbright = 256 - LittleLong (*((int *)vid.colormap + 2048));
-
-    D_InitCaches (surfcache, sizeof(surfcache));
 
     // sdl
     SDL_WindowFlags sdl_win_flags = SDL_WINDOW_RESIZABLE;//SDL_WINDOW_OPENGL;//SDL_WINDOW_MOUSE_CAPTURE | SDL_WINDOW_MOUSE_GRABBED;//0;//SDL_WINDOW_MOUSE_CAPTURE | SDL_WINDOW_MOUSE_GRABBED;
@@ -247,9 +245,11 @@ void VID_Update (vrect_t *rects)
 {
     SDL_Surface *sdl_win_surf;
     SDL_Rect sdl_rect_src, sdl_rect_dst;
+    int win_w, win_h;
     int x, x_start, x_end;
     int y, y_start, y_end;
     int w_scaled, h_scaled;
+    int scale = vid_scale_safe;
     byte *ptr_src, *ptr_src_row_start;
     Uint8 *ptr_dst, *ptr_dst_row_start;
 
@@ -261,7 +261,7 @@ void VID_Update (vrect_t *rects)
 
         w = atoi(vid_config_x.string);
         h = atoi(vid_config_y.string);
-        vid_scale = scl = atoi(vid_config_scale.string);
+        scale = vid_scale_safe = vid_scale = scl = atoi(vid_config_scale.string);
 
         if (w < BASEWIDTH)
         {
@@ -282,7 +282,7 @@ void VID_Update (vrect_t *rects)
             if (scl > MAXSCALE) scl = MAXSCALE;
             sprintf(temp, "%d", scl);
             Cvar_Set("vid_config_scale", temp);
-            vid_scale = scl;
+            scale = vid_scale_safe = vid_scale = scl;
         }
 
         SDL_SetWindowPosition(vid_sdl_win, 128, 128);
@@ -298,8 +298,11 @@ void VID_Update (vrect_t *rects)
     if (!vid_sdl_surf)
         return;
 
-    w_scaled = vid_sdl_surf->w * vid_scale;
-    h_scaled = vid_sdl_surf->h * vid_scale;
+    win_w = sdl_win_surf->w;
+    win_h = sdl_win_surf->h;
+
+    w_scaled = vid_sdl_surf->w * scale;
+    h_scaled = vid_sdl_surf->h * scale;
 
     if (!full_redraw_req)
     {
@@ -342,7 +345,7 @@ void VID_Update (vrect_t *rects)
     sdl_rect_dst.x += (sdl_win_surf->w - w_scaled) >> 1;
     sdl_rect_dst.y += (sdl_win_surf->h - h_scaled) >> 1;
 
-    if (vid_scale > 1)
+    if (scale > 1)
     {
         int src_x1, src_x2;
         int src_y1;
@@ -352,8 +355,8 @@ void VID_Update (vrect_t *rects)
         SDL_Color *ptr_dst_row_start;
         int bytes_to_copy = w_scaled * sizeof(*ptr_dst_row_start);
 
-        sdl_rect_dst.w *= vid_scale;
-        sdl_rect_dst.h *= vid_scale;
+        sdl_rect_dst.w *= scale;
+        sdl_rect_dst.h *= scale;
         // SDL_BlitSurfaceScaled(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst, SDL_SCALEMODE_NEAREST);
 
         src_x1 = sdl_rect_dst.x;
@@ -380,14 +383,14 @@ void VID_Update (vrect_t *rects)
 
             for (src_x = src_x1; src_x < src_x2; src_x++)
             {
-                for (rx = 0; rx < vid_scale; rx++)
+                for (rx = 0; rx < scale; rx++)
                     *ptr_line++ = vid_palette_reverse[*ptr_src];
                 ptr_src++;
             }
 
             ptr_dst_row_start = (SDL_Color *)((uint8_t *)ptr_dst_row_start + sdl_win_surf->pitch);
 
-            for (ry = 1; ry < vid_scale; ry++)
+            for (ry = 1; ry < scale; ry++)
             {
                 memcpy(ptr_dst_row_start, ptr_first_repeat, bytes_to_copy);
                 ptr_dst_row_start = (SDL_Color *)((uint8_t *)ptr_dst_row_start + sdl_win_surf->pitch);
@@ -395,14 +398,11 @@ void VID_Update (vrect_t *rects)
 
             ptr_src_row_start += vid_sdl_surf->pitch;
 
-            dst_y1 += vid_scale;
+            dst_y1 += scale;
         }
     }
     else
         SDL_BlitSurface(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst);
-
-    SDL_SetWindowMinimumSize(vid_sdl_win, BASEWIDTH * vid_scale, BASEHEIGHT * vid_scale);
-    SDL_SetWindowMaximumSize(vid_sdl_win, MAXWIDTH * vid_scale, MAXHEIGHT * vid_scale);
     
     if (!full_redraw_req)
         SDL_UpdateWindowSurfaceRects(vid_sdl_win, &sdl_rect_dst, 1);
@@ -489,7 +489,7 @@ void VID_MenuDraw(void)
             M_DrawCharacter(168 + (8 * strlen(str_vid_size_y)), pos1 + 16, cursor_charnum);
             break;
         case 2:
-            M_DrawCharacter (200, pos1 + (16 * 2), 12+((int)(realtime*4)&1));
+            M_DrawCharacter (152, pos1 + (16 * 2), 12+((int)(realtime*4)&1));
             break;
     }
 }
