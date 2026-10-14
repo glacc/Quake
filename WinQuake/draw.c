@@ -548,6 +548,10 @@ void Draw_ConsoleBackground (int lines)
 	conback = Draw_CachePic ("gfx/conback.lmp");
 
 // hack the version number directly into the pic
+#ifdef _SDL
+	sprintf (ver, "(Quake SDL Port %2.2f) %4.2f", (float)QSDL_VERSION, (float)VERSION);
+	dest = conback->data + 320*186 + 320 - 11 - 8*strlen(ver);
+#else
 #ifdef _WIN32
 	sprintf (ver, "(WinQuake) %4.2f", (float)VERSION);
 	dest = conback->data + 320*186 + 320 - 11 - 8*strlen(ver);
@@ -560,6 +564,7 @@ void Draw_ConsoleBackground (int lines)
 #else
 	dest = conback->data + 320 - 43 + 320*186;
 	sprintf (ver, "%4.2f", VERSION);
+#endif
 #endif
 
 	for (x=0 ; x<strlen(ver) ; x++)

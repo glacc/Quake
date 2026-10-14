@@ -451,6 +451,7 @@ void VID_MenuDraw(void)
     int cursor_charnum = 10+((int)(realtime*4)&1);
     const int pos1 = 36;
     const int pos2 = 128;
+    const int right_x = 200;
 
     if (menu_first_update)
     {
@@ -463,33 +464,33 @@ void VID_MenuDraw(void)
     p = Draw_CachePic ("gfx/vidmodes.lmp");
     M_DrawPic ( (320-p->width)/2, 4, p);
 
-    M_Print (64, pos1, "Win. Width");
-    M_DrawTextBox (160, pos1 - 8, 6, 1);
-    M_Print (168, pos1, str_vid_size_x);
+    M_Print (64, pos1, "Window Width");
+    M_DrawTextBox (right_x - 8, pos1 - 8, 6, 1);
+    M_Print (right_x, pos1, str_vid_size_x);
 
-    M_Print (64, pos1 + (16 * 1), "Win. Height");
-    M_DrawTextBox (160, pos1 + (16 * 1) - 8, 6, 1);
-    M_Print (168, 52, str_vid_size_y);
+    M_Print (64, pos1 + (16 * 1), "Window Height");
+    M_DrawTextBox (right_x - 8, pos1 + (16 * 1) - 8, 6, 1);
+    M_Print (right_x, 52, str_vid_size_y);
 
-    M_Print (64, pos1 + (16 * 2), "Scale Fac.");
+    M_Print (64, pos1 + (16 * 2), "Scale Factor");
     sprintf(temp, "%dx", (int)vid_scale_menu);
-    M_Print (168, pos1 + (16 * 2), temp);
+    M_Print (right_x, pos1 + (16 * 2), temp);
 
     M_Print (64, pos2, "Press ENTER to set mode");
-    sprintf(temp, "Current is %dx%d", vid_size_x, vid_size_y);
-    M_Print (64, pos2 + (8 * 2), temp);
-    M_Print (64, pos2 + (8 * 4), "ESC to exit");
+    sprintf(temp, "Current rendering size is %dx%d", vid_size_x, vid_size_y);
+    M_Print (24, pos2 + (8 * 2), temp);
+    M_Print (112, pos2 + (8 * 4), "ESC to exit");
 
     switch (vid_cursor)
     {
         case 0:
-            M_DrawCharacter(168 + (8 * strlen(str_vid_size_x)), pos1, cursor_charnum);
+            M_DrawCharacter(right_x + (8 * strlen(str_vid_size_x)), pos1, cursor_charnum);
             break;
         case 1:
-            M_DrawCharacter(168 + (8 * strlen(str_vid_size_y)), pos1 + 16, cursor_charnum);
+            M_DrawCharacter(right_x + (8 * strlen(str_vid_size_y)), pos1 + 16, cursor_charnum);
             break;
         case 2:
-            M_DrawCharacter (152, pos1 + (16 * 2), 12+((int)(realtime*4)&1));
+            M_DrawCharacter (right_x - 16, pos1 + (16 * 2), 12+((int)(realtime*4)&1));
             break;
     }
 }
@@ -497,8 +498,9 @@ void VID_MenuDraw(void)
 int CheckNewSizeX(void)
 {
     int new_w = atoi(str_vid_size_x);
+    int max_w = MAXWIDTH * vid_scale_menu;
     if (new_w < BASEWIDTH) new_w = BASEWIDTH;
-    if (new_w > MAXWIDTH)  new_w = MAXWIDTH;
+    if (new_w > max_w)     new_w = max_w;
     sprintf(str_vid_size_x, "%d", new_w);
     return new_w;
 }
@@ -506,8 +508,9 @@ int CheckNewSizeX(void)
 int CheckNewSizeY(void)
 {
     int new_h = atoi(str_vid_size_y);
+    int max_h = MAXHEIGHT * vid_scale_menu;
     if (new_h < BASEHEIGHT) new_h = BASEHEIGHT;
-    if (new_h > MAXHEIGHT)  new_h = MAXHEIGHT;
+    if (new_h > max_h)      new_h = max_h;
     sprintf(str_vid_size_y, "%d", new_h);
     return new_h;
 }
