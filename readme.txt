@@ -1,3 +1,15 @@
+This fork focuses mainly on SDL port and DOS version.
+
+For SDL port, soundtracks can be placed in dir-to-pak/music in
+Ogg Vorbis format.
+e.g. id1/music/track02.ogg
+
+The input handling for looking around has been
+modified for more modern experience.
+
+The SDL port has currently been tested on Arch Linux only.
+
+----------------------------- Original readme.txt -----------------------------
 
 This is the complete source code for winquake, glquake, quakeworld, and 
 glquakeworld.
