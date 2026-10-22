@@ -798,8 +798,8 @@ int SCR_ModalMessage (char *text)
 
 	#ifdef _SDL
 		// simple patch to avoid this loop blocking event dispatching and making whole game stops responsing forever
+		QSDL_WaitEvent();
 		QSDL_DispatchEvents();
-		SDL_Delay(50);
 	#endif
 
 		Sys_SendKeyEvents ();

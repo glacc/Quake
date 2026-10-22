@@ -34,6 +34,7 @@ extern void QSDL_EndPullKeyEvent(void);
 
 extern void QSDL_ClearMouseDelta(void);
 
+extern void QSDL_WaitEvent(void);
 extern void QSDL_DispatchEvents(void);
 
 extern void QSDL_FreeP(void **ptr);

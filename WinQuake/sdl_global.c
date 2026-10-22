@@ -144,6 +144,11 @@ void QSDL_EndPullKeyEvent(void)
     kbuf_tail = kbuf_tail_tmp;
 }
 
+void QSDL_WaitEvent(void)
+{
+    SDL_WaitEvent(NULL);
+}
+
 void QSDL_DispatchEvents(void)
 {
     SDL_Event event;

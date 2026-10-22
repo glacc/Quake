@@ -354,7 +354,7 @@ void VID_Update (vrect_t *rects)
     sdl_rect_dst.x += (win_w - w_scaled) >> 1;
     sdl_rect_dst.y += (win_h - h_scaled) >> 1;
 
-    if (scale > 1 && SDL_LockSurface(sdl_win_surf))
+    if (scale > 1)
     {
         int src_x1, src_x2;
         int src_y1;
@@ -364,55 +364,57 @@ void VID_Update (vrect_t *rects)
         SDL_Color *ptr_dst_row_start;
         int bytes_to_copy = w_scaled * sizeof(*ptr_dst_row_start);
 
-        sdl_rect_dst.w *= scale;
-        sdl_rect_dst.h *= scale;
-
-        // too slow...
-        //SDL_BlitSurfaceScaled(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst, SDL_SCALEMODE_NEAREST);
-
-        src_x1 = sdl_rect_dst.x;
-        src_x2 = src_x1 + vid_sdl_surf->w;
-
-        src_y1 = sdl_rect_src.y;
-
-        dst_x1 = sdl_rect_dst.x;
-
-        dst_y1 = sdl_rect_dst.y;
-        dst_y2 = dst_y1 + h_scaled;
-
-        ptr_src_row_start = (uint8_t *)vid_sdl_surf->pixels + (vid_sdl_surf->pitch * src_y1) + src_x1;
-        ptr_dst_row_start = (SDL_Color *)((uint8_t *)sdl_win_surf->pixels + (sdl_win_surf->pitch * dst_y1)) + sdl_rect_dst.x;
-
-        while (dst_y1 < dst_y2)
+        if (SDL_LockSurface(sdl_win_surf))
         {
-            int rx, ry;
-            int src_x;
-            SDL_Color *ptr_first_repeat = ptr_dst_row_start;
-            uint8_t *ptr_src = ptr_src_row_start;
-            // SDL_Color *ptr_line = (SDL_Color *)linebuf;
-            SDL_Color *ptr_line = ptr_dst_row_start;
+            sdl_rect_dst.w *= scale;
+            sdl_rect_dst.h *= scale;
 
-            for (src_x = src_x1; src_x < src_x2; src_x++)
+            // too slow...
+            //SDL_BlitSurfaceScaled(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst, SDL_SCALEMODE_NEAREST);
+
+            src_x1 = sdl_rect_src.x;
+            src_x2 = src_x1 + w_scaled;
+
+            src_y1 = sdl_rect_src.y;
+
+            dst_x1 = sdl_rect_dst.x;
+
+            dst_y1 = sdl_rect_dst.y;
+            dst_y2 = dst_y1 + h_scaled;
+
+            ptr_src_row_start = (uint8_t *)vid_sdl_surf->pixels + (vid_sdl_surf->pitch * src_y1) + src_x1;
+            ptr_dst_row_start = (SDL_Color *)((uint8_t *)sdl_win_surf->pixels + (sdl_win_surf->pitch * dst_y1)) + sdl_rect_dst.x;
+
+            while (dst_y1 < dst_y2)
             {
-                for (rx = 0; rx < scale; rx++)
-                    *ptr_line++ = vid_palette_reverse[*ptr_src];
-                ptr_src++;
-            }
+                int rx, ry;
+                int src_x;
+                SDL_Color *ptr_first_repeat = ptr_dst_row_start;
+                uint8_t   *ptr_src  = ptr_src_row_start;
+                SDL_Color *ptr_line = ptr_dst_row_start;
 
-            ptr_dst_row_start = (SDL_Color *)((uint8_t *)ptr_dst_row_start + sdl_win_surf->pitch);
+                for (src_x = src_x1; src_x < src_x2; src_x++)
+                {
+                    for (rx = 0; rx < scale; rx++)
+                        *ptr_line++ = vid_palette_reverse[*ptr_src];
+                    ptr_src++;
+                }
 
-            for (ry = 1; ry < scale; ry++)
-            {
-                memcpy(ptr_dst_row_start, ptr_first_repeat, bytes_to_copy);
                 ptr_dst_row_start = (SDL_Color *)((uint8_t *)ptr_dst_row_start + sdl_win_surf->pitch);
+
+                for (ry = 1; ry < scale; ry++)
+                {
+                    memcpy(ptr_dst_row_start, ptr_first_repeat, bytes_to_copy);
+                    ptr_dst_row_start = (SDL_Color *)((uint8_t *)ptr_dst_row_start + sdl_win_surf->pitch);
+                }
+
+                ptr_src_row_start += vid_sdl_surf->pitch;
+
+                dst_y1 += scale;
             }
 
-            ptr_src_row_start += vid_sdl_surf->pitch;
-
-            dst_y1 += scale;
+            SDL_UnlockSurface(sdl_win_surf);
         }
-
-        SDL_LockSurface(sdl_win_surf);
     }
     else
         SDL_BlitSurface(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst);
@@ -580,13 +582,16 @@ void VID_MenuKey(int key)
         break;
     case K_ENTER:
         S_LocalSound ("misc/menu2.wav");
+
         new_w = CheckNewSizeX();
         new_h = CheckNewSizeY();
         vid_scale = vid_scale_menu;
+
         VID_ResizeWindow(new_w, new_h, false);
-        sprintf(temp, "%d", vid_scale);
+
         Cvar_Set("vid_config_x", str_vid_size_x);
         Cvar_Set("vid_config_y", str_vid_size_y);
+        sprintf(temp, "%d", vid_scale);
         Cvar_Set("vid_config_scale", temp);
         break;
     case K_BACKSPACE:
