@@ -106,7 +106,8 @@ void VID_ResizeSurface(int width, int height)
     
     size_surfcache = D_SurfaceCacheForRes(width, height);
 
-    pixcount = width * height;
+    // extra line for safe zone
+    pixcount = width * (height + 1);
 
     if (surfcache)
     {
@@ -114,8 +115,10 @@ void VID_ResizeSurface(int width, int height)
         free(surfcache);
     }
     surfcache = malloc(size_surfcache);
+
     if (vid_buffer) free(vid_buffer);
     vid_buffer = malloc(sizeof(byte) * pixcount);
+    
     if (zbuffer) free(zbuffer);
     zbuffer = malloc(sizeof(short) * pixcount);
 
@@ -142,7 +145,7 @@ void VID_ResizeSurface(int width, int height)
 
 void VID_ResizeWindow(int width, int height, bool from_event)
 {
-    SDL_Surface *win_surf;
+    SDL_Surface *win_surf = NULL;
 
     SDL_SetWindowMaximumSize(vid_sdl_win, MAXWIDTH * vid_scale, MAXHEIGHT * vid_scale);
 
@@ -366,6 +369,8 @@ void VID_Update (vrect_t *rects)
 
         if (SDL_LockSurface(sdl_win_surf))
         {
+            int src_y;
+
             sdl_rect_dst.w *= scale;
             sdl_rect_dst.h *= scale;
 
@@ -373,7 +378,7 @@ void VID_Update (vrect_t *rects)
             //SDL_BlitSurfaceScaled(vid_sdl_surf, &sdl_rect_src, sdl_win_surf, &sdl_rect_dst, SDL_SCALEMODE_NEAREST);
 
             src_x1 = sdl_rect_src.x;
-            src_x2 = src_x1 + w_scaled;
+            src_x2 = src_x1 + sdl_rect_src.w;
 
             src_y1 = sdl_rect_src.y;
 
@@ -385,6 +390,8 @@ void VID_Update (vrect_t *rects)
             ptr_src_row_start = (uint8_t *)vid_sdl_surf->pixels + (vid_sdl_surf->pitch * src_y1) + src_x1;
             ptr_dst_row_start = (SDL_Color *)((uint8_t *)sdl_win_surf->pixels + (sdl_win_surf->pitch * dst_y1)) + sdl_rect_dst.x;
 
+            src_y = src_y1;
+
             while (dst_y1 < dst_y2)
             {
                 int rx, ry;
@@ -395,8 +402,11 @@ void VID_Update (vrect_t *rects)
 
                 for (src_x = src_x1; src_x < src_x2; src_x++)
                 {
+                    SDL_Color pix_val = vid_palette_reverse[*ptr_src];
+
                     for (rx = 0; rx < scale; rx++)
-                        *ptr_line++ = vid_palette_reverse[*ptr_src];
+                        *ptr_line++ = pix_val;
+
                     ptr_src++;
                 }
 
@@ -409,6 +419,7 @@ void VID_Update (vrect_t *rects)
                 }
 
                 ptr_src_row_start += vid_sdl_surf->pitch;
+                src_y++;
 
                 dst_y1 += scale;
             }
